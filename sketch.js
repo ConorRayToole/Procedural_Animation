@@ -1,10 +1,12 @@
 let chain;
+let showBones;
 
 function setup() {
   createCanvas(600, 600);
   angleMode(DEGREES);
   mouse = createVector(mouseX, mouseY);
   chain = new Chain(15);
+  showBones = true;
 }
 
 function draw() {
@@ -19,19 +21,24 @@ class Chain {
     this.links = [];
     for (let i = 0; i < this.length; i++){
       if (i === 0){
-        this.links.push(new ChainLink(40, null));
+        this.links.push(new ChainLink(40, null, null));
       } else {
-        this.links.push(new ChainLink(30, this.links[i - 1]));
+        this.links.push(new ChainLink(30, this.links[i - 1], null));
       }
     }
+    for (let i = 0; i < this.length - 1; i++){
+      this.links[i].next = this.links[i + 1];
+    }
+    
   } 
   
   update() {
+    this.generateSkin(this.links);
     for (let i = 0; i < this.length; i++){
       this.links[i].update();
-      //this.links[i].display();
-      this.generateSkin(this.links);
-      //this.links[i].displayBones();
+      if (showBones) {
+        this.links[i].displayBones();
+      }
     }
   }
   
@@ -42,30 +49,31 @@ class Chain {
     for (let i = 0; i < this.length; i++){
       curveVertex(chain[i].rightEdge.x, chain[i].rightEdge.y);
       if (i === this.length - 1){
-        //tail
-        let reverseDirection = p5.Vector.mult(chain[i].direction, -1)
-        let tail = p5.Vector.add(chain[i].position, reverseDirection);
-        curveVertex(tail.x, tail.y);
+        curveVertex(chain[i].tailEdge.x, chain[i].tailEdge.y);
       }
     }
-    for (let i = this.length - 1; i > 0; i--){
+    for (let i = this.length - 1; i > -1; i--){
       curveVertex(chain[i].leftEdge.x, chain[i].leftEdge.y);
+      if (i === 0) {
+        curveVertex(chain[i].headEdge.x, chain[i].headEdge.y);
+      }
     }
     endShape(CLOSE);
-    //head
-    ellipse(chain[0].position.x, chain[0].position.y, chain[0].r*2)
   }
 
 }
 
 class ChainLink {
-  constructor(r, previous) {
+  constructor(r, previous, next) {
     this.position = createVector(0,0);
     this.direction = createVector(0,0); //from ellipse
-    this.r = r;
     this.rightEdge = createVector(0,0);
     this.leftEdge = createVector(0,0);
+    this.headEdge = createVector(0,0);
+    this.tailEdge = createVector(0,0);
+    this.r = r;
     this.previous = previous;
+    this.next = next;
   }
   
   update(){
@@ -74,25 +82,30 @@ class ChainLink {
     } else {
       this.position.add(this.calculateLocation());
     }
-    this.skin();
+    this.skeleton(this.position, this.previous, this.next, this.direction, this.r);
+  }
+
+  skeleton(position, previous, next, direction, r) {
+    if (previous === null){
+      this.calculateLocation(next); //get direction for head
+      this.headEdge = p5.Vector.add(position, direction);
+    }
+    if (next === null){
+      this.tailEdge = p5.Vector.sub(position, direction);
+    }
+    let offset1 = createVector(direction.y * -1, direction.x);
+    let offset2 = createVector(direction.y, direction.x * -1);
+    this.rightEdge = p5.Vector.add(position, offset1);
+    this.leftEdge = p5.Vector.add(position, offset2);
   }
   
-  skin() {
-    let offset1 = createVector(this.direction.y * -1, this.direction.x);
-    let offset2 = createVector(this.direction.y, this.direction.x * -1);
-    this.rightEdge = p5.Vector.add(this.position, offset1);
-    this.leftEdge = p5.Vector.add(this.position, offset2);
-  }
-  
-  getPointOnEllipse(angle){
-    let result = createVector(0,0);
-    result.x = this.position.x + this.r * cos(angle);
-    result.y = this.position.y + this.r * sin(angle);
-    return result
-  }
-  
-  calculateLocation() {
-    let distanceBetween = p5.Vector.sub(this.previous.position, this.position);
+  calculateLocation(next) { //change this to link nodes or something
+    let distanceBetween;
+    if (next) {
+      distanceBetween = p5.Vector.sub(this.position, this.next.position);
+    } else {
+      distanceBetween = p5.Vector.sub(this.previous.position, this.position);
+    }
     this.direction = p5.Vector.normalize(distanceBetween);
     this.direction.mult(this.r);
     return p5.Vector.sub(distanceBetween, this.direction);
@@ -101,11 +114,16 @@ class ChainLink {
   displayBones(){
     fill(0, 235, 100);
     stroke(0);
-    ellipse(this.position.x, this.position.y, this.r*2)
+    ellipse(this.position.x, this.position.y, this.r*2);
     fill(0);
-    ellipse(this.rightEdge.x, this.rightEdge.y, 20)
-    fill(0);
-    ellipse(this.leftEdge.x, this.leftEdge.y, 20)
+    ellipse(this.rightEdge.x, this.rightEdge.y, 20);
+    ellipse(this.leftEdge.x, this.leftEdge.y, 20);
+    if (this.previous === null) {
+      ellipse(this.headEdge.x, this.headEdge.y, 20);
+    }
+    if (this.next === null){
+      ellipse(this.tailEdge.x, this.tailEdge.y, 20);
+    }
   }
 
 }
