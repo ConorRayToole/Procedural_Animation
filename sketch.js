@@ -1,29 +1,45 @@
-let chain;
+let fish;
 let showBones;
+let isFin;
 
 function setup() {
   createCanvas(600, 600);
   angleMode(DEGREES);
   mouse = createVector(mouseX, mouseY);
-  chain = new Chain(15);
+  fish = new Fish(2);
+  isFin = false;
   showBones = true;
 }
 
 function draw() {
   mouse = createVector(mouseX, mouseY);
   background(220);
-  chain.update();
+  fish.update();
+}
+
+class Fish {
+  constructor(size){
+    this.size = size
+    this.shape = [20, 30, 25, 20, 15, 12, 10];
+    this.shape = this.shape.map(item => {return item * size});
+    this.chain = new Chain(7, this.shape);
+  }
+  
+  update() {
+    this.chain.update();
+  }
 }
 
 class Chain {
-  constructor(length){
+  constructor(length, shape){
     this.length = length;
+    this.shape = shape;
     this.links = [];
     for (let i = 0; i < this.length; i++){
       if (i === 0){
-        this.links.push(new ChainLink(40, null, null));
+        this.links.push(new ChainLink(shape[i], null, null));
       } else {
-        this.links.push(new ChainLink(30, this.links[i - 1], null));
+        this.links.push(new ChainLink(shape[i], this.links[i - 1], null));
       }
     }
     for (let i = 0; i < this.length - 1; i++){
@@ -118,6 +134,10 @@ class ChainLink {
     fill(0);
     ellipse(this.rightEdge.x, this.rightEdge.y, 20);
     ellipse(this.leftEdge.x, this.leftEdge.y, 20);
+    if (this.isFin) {
+      ellipse(this.finR.x, this.finR.y, 20);
+      ellipse(this.finL.x, this.finL.y, 20);
+    }
     if (this.previous === null) {
       ellipse(this.headEdge.x, this.headEdge.y, 20);
     }
